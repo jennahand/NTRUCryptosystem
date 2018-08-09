@@ -1,7 +1,5 @@
 import random
-from numpy import asarray
-from numpy.polynomial import Polynomial
-from numpy.polynomial.polynomial import polyone, polyzero, polydiv, polysub, polymul, polyadd
+from numpy.polynomial.polynomial import polydiv, polysub, polyadd
 
 
 def generate_random_polynomial(length, d):
@@ -53,6 +51,13 @@ def polynomial_to_bytes(poly):
     return byte_values
 
 
+def pad_polynomial(f, n):
+    result = f.copy()
+    for i in range(len(f), n):
+        result.append(0)
+    return result
+
+
 def truncate_polynomial(poly):
     i = len(poly)
     leading_bit = poly[i - 1]
@@ -74,35 +79,50 @@ def kth_product_element(f, g, k):
     return k_sum
 
 
-# multiplies polynomials mod Q
+# multiplies polynomials
 def polynomial_multiply(f, g, q, N):
     result = []
     for k in range(0, N):
-        result.append(kth_product_element(f, g, k) % q)
+        result.append(kth_product_element(f, g, k))
     return result
 
 
-# adds polynomials mod Q
-def polynomial_add(f, g, Q):
-    result = polyadd(f, g)
+# adds polynomials
+def polynomial_add(f, g):
+    result = [0] * len(f)
     for i in range(0, len(result)):
-        result[i] = result[i] % Q
+        result[i] = f[i] + g[i]
     return result
 
 
-# subtracts polynomials mod Q
-def polynomial_subtract(f, g, Q):
-    result = polysub(f, g)
+# subtracts polynomials
+def polynomial_subtract(f, g):
+    result = [0] * len(f)
     for i in range(0, len(result)):
-        result[i] = result[i] % Q
+        result[i] = f[i] - g[i]
     return result
 
 
-# divides polynomials mod Q
-def polynomial_divide(f, g, Q):
-    result = polydiv(f, g)
-    for i in range(0, len(result)):
-        result[i] = result[i] % Q
+# mods coefficients of a polynomial f by modulus m
+def mod_coefficients(f, m):
+    for i in range(0, len(f)):
+        f[i] = f[i] % m
+    return f
+
+
+# mods polynomial f by polynomial m
+def mod_polynomial(f, m):
+    result = f.copy()
+    while polynomial_degree(f) >= polynomial_degree(m):
+        result = polysub(result, m)
+    return result
+
+
+def center_coefficients(f, q):
+    result = f.copy()
+    for i in range(0, len(f)):
+        if result[i] > (q - 1)//2:
+            result[i] = result[i] - q
     return result
 
 
@@ -142,24 +162,58 @@ def invert(f, g, q, N):
         B = C
         C = b_temp
 
-        while polynomial_degree(F) >= polynomial_degree(G):
-            print(polynomial_degree(F))
-            print(polynomial_degree(G))
-            f_degree = polynomial_degree(F)
-            g_degree = polynomial_degree(G)
+        f_degree = polynomial_degree(F)
+        g_degree = polynomial_degree(G)
+        while f_degree >= g_degree:
             j = f_degree - g_degree
-            h_scalar = F[f_degree] // G[g_degree]
+            h_scalar = F[f_degree] * mod_inverse(G[g_degree], q)
 
             H = [0] * N
             H[j] = h_scalar
+            print_polynomial(F)
 
             F = polynomial_subtract(F, polynomial_multiply(H, G, q, N), q)
+            print_polynomial(F)
             B = polynomial_subtract(B, polynomial_multiply(H, C, q, N), q)
 
+            f_degree = polynomial_degree(F)
+            g_degree = polynomial_degree(G)
+
     if polynomial_degree(F) > 0:
-        return polynomial_divide(B, [F[0]], q)
+        return scalar_multiply(mod_inverse(F[0], q), B, q)
     else:
         return False
+
+
+def mod_inverse(a, m):
+    m0 = m
+    y = 0
+    x = 1
+
+    if m == 1:
+        return 0
+
+    while a > 1:
+        # q is quotient
+        q = a // m
+
+        t = m
+
+        # m is remainder now, process
+        # same as Euclid's algorithm
+        m = a % m
+        a = t
+        t = y
+
+        # Update x and y
+        y = x - q * y
+        x = t
+
+    # Make x positive
+    if x < 0:
+        x = x + m0
+
+    return x
 
 
 def print_polynomial(poly):

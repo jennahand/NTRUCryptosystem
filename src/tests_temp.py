@@ -56,11 +56,11 @@ def test_is_invertible():
 
 def test_polynomial_multiply():
     f = [0] * N
-    g = [0] * N
+    g = [0] * (N + 1)
     print(len(f))
     g[0] = -1
     f[0] = 1
-    g[N-1] = 1
+    g[N] = 1
     f[1] = 2
     result = polynomial_multiply(f, g, Q, N)
     truncate_polynomial(result)
@@ -74,4 +74,13 @@ def test_polynomial_add():
     print_polynomial(result)
 
 
-test_is_invertible()
+def test_invert():
+    N = 11
+    q = 32
+    f = [-1, 1, 1, 0, -1, 0, 1, 0, 0, 1, -1]
+    g = [0] * (N + 1)
+    g[N] = 1
+    g[0] = -1
+    print(invert(f, g, q, N))
+
+test_invert()
